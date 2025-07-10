@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -166,18 +167,16 @@
 
             <!-- Results Summary -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div class="bg-green-50 rounded-xl p-4 border border-green-200 {{ $kuis->skor > 0 ? 'pulse-green' : '' }}">
-                    <div class="text-2xl font-bold text-green-600">{{ $kuis->skor ?? 0 }}</div>
+                <div class="bg-green-50 rounded-xl p-4 border border-green-200 {{ $correctCardClass }}">
+                    <div class="text-2xl font-bold text-green-600">{{ $skor }}</div>
                     <div class="text-sm text-green-700">Jawaban Benar</div>
                 </div>
-                <div class="bg-red-50 rounded-xl p-4 border border-red-200 {{ ($kuis->jawaban->count() - ($kuis->skor ?? 0)) > 0 ? 'pulse-red' : '' }}">
-                    <div class="text-2xl font-bold text-red-600">{{ $kuis->jawaban->count() - ($kuis->skor ?? 0) }}</div>
+                <div class="bg-red-50 rounded-xl p-4 border border-red-200 {{ $incorrectCardClass }}">
+                    <div class="text-2xl font-bold text-red-600">{{ $incorrect }}</div>
                     <div class="text-sm text-red-700">Jawaban Salah</div>
                 </div>
                 <div class="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                    <div class="text-2xl font-bold text-blue-600">
-                        {{ $kuis->jawaban->count() > 0 ? round((($kuis->skor ?? 0) / $kuis->jawaban->count()) * 100, 1) : 0 }}%
-                    </div>
+                    <div class="text-2xl font-bold text-blue-600">{{ $persentase }}%</div>
                     <div class="text-sm text-blue-700">Persentase</div>
                 </div>
             </div>
@@ -219,7 +218,7 @@
         </div>
 
         <!-- Complete Card (Shown if all answers are correct) -->
-        @if (($kuis->skor ?? 0) == $kuis->jawaban->count() && $kuis->jawaban->count() > 0)
+        @if ($isPerfect)
             <div class="bg-white rounded-2xl shadow-sm p-8 mb-8 fade-in border border-gray-100" id="completeCard">
                 <div class="mb-6">
                     <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -231,7 +230,7 @@
                     <p class="text-gray-600 text-lg">Anda telah menyelesaikan semua soal dengan benar</p>
                 </div>
                 <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 mb-6 border border-green-200 pulse-green">
-                    <p class="text-2xl font-bold text-green-600">Skor Final: {{ $kuis->skor ?? 0 }}/{{ $kuis->jawaban->count() }}</p>
+                    <p class="text-2xl font-bold text-green-600">Skor Final: {{ $skor }}/{{ $kuis->jawaban->count() }}</p>
                 </div>
                 <a href="{{ route('kuis.mulai', $kuis->mata_kuliah_id) }}" class="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold py-3 px-8 rounded-xl transition-all duration-200 transform hover:scale-105">
                     🔄 Mulai Kuis Baru
@@ -252,6 +251,7 @@
         </div>
     @endif
 
+    @verbatim
     <script>
         function toggleMobileMenu() {
             const menu = document.getElementById('mobileMenu');
@@ -287,18 +287,8 @@
                 mobileDropdown.classList.add('hidden');
             }
         });
-
-        // Apply animations on load
-        document.addEventListener('DOMContentLoaded', function() {
-            const correctCard = document.querySelector('.bg-green-50');
-            const incorrectCard = document.querySelector('.bg-red-50');
-            if (correctCard && {{ $kuis->skor ?? 0 }} > 0) {
-                correctCard.classList.add('pulse-green');
-            }
-            if (incorrectCard && {{ $kuis->jawaban->count() - ($kuis->skor ?? 0) }} > 0) {
-                incorrectCard.classList.add('pulse-red');
-            }
-        });
     </script>
+    @endverbatim
 </body>
 </html>
+```

@@ -125,7 +125,7 @@ class KuisController extends Controller
         try {
             $kuis = Kuis::findOrFail($kuisId);
             $jawabanKuis = KuisJawaban::where('kuis_id', $kuisId)->get();
-            $totalSoal = Session::get("kuis_{$kuisId}_soal", [])->count();
+            $totalSoal = count(Session::get("kuis_{$kuisId}_soal", []));
 
             if ($jawabanKuis->count() < $totalSoal) {
                 Log::warning('Kuis belum selesai', ['kuis_id' => $kuisId, 'jawaban_count' => $jawabanKuis->count(), 'total_soal' => $totalSoal]);
@@ -158,12 +158,30 @@ class KuisController extends Controller
         $kuis = Kuis::with(['jawaban.soal', 'mataKuliah'])->findOrFail($kuisId);
         $mataKuliah = MataKuliah::all();
 
+        // Proses data untuk view
+        $data = [
+            'kuis' => $kuis,
+            'mataKuliah' => $mataKuliah,
+            'skor' => $kuis->skor ?? 0,
+            'incorrect' => $kuis->jawaban->count() - ($kuis->skor ?? 0),
+            'persentase' => $kuis->jawaban->count() > 0 
+                ? round(($kuis->skor ?? 0) / $kuis->jawaban->count() * 100, 1) 
+                : 0,
+            'isPerfect' => ($kuis->skor ?? 0) == $kuis->jawaban->count() && $kuis->jawaban->count() > 0,
+            'correctCardClass' => ($kuis->skor ?? 0) > 0 ? 'pulse-green' : '',
+            'incorrectCardClass' => ($kuis->jawaban->count() - ($kuis->skor ?? 0)) > 0 ? 'pulse-red' : '',
+        ];
+
         Log::info('Menampilkan hasil kuis', [
             'kuis_id' => $kuisId,
-            'skor' => $kuis->skor,
+            'skor' => $data['skor'],
             'jawaban_count' => $kuis->jawaban->count(),
+            'persentase' => $data['persentase'],
+            'is_perfect' => $data['isPerfect'],
+            'correct_card_class' => $data['correctCardClass'],
+            'incorrect_card_class' => $data['incorrectCardClass'],
         ]);
 
-        return view('hasil', compact('kuis', 'mataKuliah'));
+        return view('hasil', $data);
     }
 }
