@@ -141,9 +141,9 @@
                     
                     <!-- Action Buttons -->
                     <div class="mt-4 flex space-x-2">
-                        <a href="{{ route('soal.index') }}" 
-                           class="flex-1 bg-gradient-to-r {{ $subject->color ?? 'from-blue-500 to-blue-600' }} text-white py-2 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity text-center block">
-                            Mulai Quiz
+                        <a href="{{ route('kuis.mulai', $subject->id) }}" 
+                            class="flex-1 bg-gradient-to-r {{ $subject->color ?? 'from-blue-500 to-blue-600' }} text-white py-2 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity text-center block">
+                             Mulai Quiz
                         </a>
                         <a href="{{ route('soal.edit', $subject->id) }}" 
                            class="px-3 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center">
