@@ -76,7 +76,7 @@
 </head>
 <body class="bg-gray-100 font-sans">
     <div class="container mx-auto px-4 py-4">
-        <a href="{{ route('soal.index') }}" 
+        <a href="{{ route('dashboard') }}" 
            class="mb-6 bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2 rounded-lg font-medium flex items-center space-x-2 transition-colors">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -110,6 +110,7 @@
                             id="mata_kuliah_id"
                             name="mata_kuliah_id"
                             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                            onchange="toggleCustomSubjectInput()"
                         >
                             <option value="" {{ old('mata_kuliah_id') ? '' : 'selected' }} disabled>Pilih mata kuliah...</option>
                             @forelse ($mataKuliah as $subject)
@@ -119,7 +120,21 @@
                             @empty
                                 <option value="" disabled>Tidak ada mata kuliah tersedia</option>
                             @endforelse
+                            <option value="custom">Tulis Sendiri</option>
                         </select>
+                        <div id="custom-subject-container" class="mt-4 hidden">
+                            <input 
+                                type="text" 
+                                id="custom_mata_kuliah" 
+                                name="custom_mata_kuliah" 
+                                placeholder="Masukkan nama mata kuliah"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                value="{{ old('custom_mata_kuliah') }}"
+                            >
+                            @error('custom_mata_kuliah')
+                                <p class="text-red-500 text-sm mt-2">{{ $message }}</p>
+                            @enderror
+                        </div>
                         @error('mata_kuliah_id')
                             <p class="text-red-500 text-sm mt-2">{{ $message }}</p>
                         @enderror
@@ -242,6 +257,22 @@ D: Memperbarui data") }}</textarea>
     <script>
         let parsedQuestions = [];
 
+        function toggleCustomSubjectInput() {
+            const select = document.getElementById('mata_kuliah_id');
+            const customContainer = document.getElementById('custom-subject-container');
+            const customInput = document.getElementById('custom_mata_kuliah');
+            
+            if (select.value === 'custom') {
+                customContainer.classList.remove('hidden');
+                customInput.required = true;
+            } else {
+                customContainer.classList.add('hidden');
+                customInput.required = false;
+                customInput.value = '';
+            }
+            updateStats();
+        }
+
         function parseQuestions() {
             const input = document.getElementById('questions-input').value;
             const lines = input.split('\n').map(line => line.trim()).filter(line => line);
@@ -318,6 +349,8 @@ D: Memperbarui data") }}</textarea>
         function updateStats() {
             const questionCount = parsedQuestions.length;
             const validQuestions = parsedQuestions.filter(q => q.correct !== -1).length;
+            const select = document.getElementById('mata_kuliah_id').value.trim();
+            const customInput = document.getElementById('custom_mata_kuliah').value.trim();
 
             document.getElementById('question-count').textContent = questionCount;
             document.getElementById('total-questions-stat').textContent = questionCount;
@@ -331,8 +364,7 @@ D: Memperbarui data") }}</textarea>
             }
 
             const saveBtn = document.getElementById('save-btn');
-            const subjectId = document.getElementById('mata_kuliah_id').value.trim();
-            saveBtn.disabled = !(validQuestions > 0 && subjectId);
+            saveBtn.disabled = !(validQuestions > 0 && (select !== '' && select !== 'custom' || (select === 'custom' && customInput !== '')));
         }
 
         function clearInput() {
@@ -340,10 +372,15 @@ D: Memperbarui data") }}</textarea>
             parseQuestions();
         }
 
-        document.getElementById('mata_kuliah_id').addEventListener('input', updateStats);
+        document.getElementById('mata_kuliah_id').addEventListener('input', () => {
+            toggleCustomSubjectInput();
+            updateStats();
+        });
+        document.getElementById('custom_mata_kuliah')?.addEventListener('input', updateStats);
 
-        // Initialize preview on page load
+        // Initialize preview and custom input state on page load
         parseQuestions();
+        toggleCustomSubjectInput();
     </script>
 </body>
 </html>

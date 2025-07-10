@@ -11,8 +11,8 @@ class CreateMataKuliahTable extends Migration
         Schema::create('mata_kuliah', function (Blueprint $table) {
             $table->id();
             $table->string('nama_mata_kuliah');
-            $table->string('ikon')->nullable(); // Kolom ikon opsional
-            $table->string('color')->nullable(); // Kolom color opsional
+            $table->string('ikon')->nullable();
+            $table->string('color')->nullable();
             $table->timestamps();
         });
     }

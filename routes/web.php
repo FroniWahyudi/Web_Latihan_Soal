@@ -1,19 +1,23 @@
 <?php
 
+use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SoalController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MataKuliahController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
 
+Route::get('/', [LoginController::class, 'showLoginForm'])->name('home');
+
+// Route autentikasi
+Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [LoginController::class, 'login']);
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+// Route yang dilindungi oleh middleware auth dan verified
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::post('/logout', function () {
-    Auth::logout();
-    return redirect('/login');
-})->name('logout');
     // Dashboard
-    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Profil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -21,13 +25,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Soal
-    Route::get('/soal', [SoalController::class, 'index'])->name('soal.index');
-    Route::get('/soal/create', [SoalController::class, 'create'])->name('soal.create');
-    Route::post('/soal', [SoalController::class, 'store'])->name('soal.store');
-    Route::get('/edit-soal/{id}', [SoalController::class, 'edit'])->name('soal.edit');
+    Route::resource('soal', SoalController::class)->only([
+        'index', 'create', 'store', 'edit'
+    ]);
 
     // Mata Kuliah
-    Route::delete('/mata-kuliah/{id}', [MataKuliahController::class, 'destroy'])->name('mata_kuliah.delete');
-    // Tambahkan juga route lainnya jika diperlukan
-    Route::get('/mata-kuliah', [MataKuliahController::class, 'index'])->name('mata_kuliah.index');
+    Route::resource('mata-kuliah', MataKuliahController::class)->except(['destroy']);
+    Route::delete('/mata-kuliah/{mata_kuliah}', [MataKuliahController::class, 'destroy'])->name('mata_kuliah.delete');
 });

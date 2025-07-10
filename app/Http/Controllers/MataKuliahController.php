@@ -16,6 +16,7 @@ class MataKuliahController extends Controller
     public function index()
     {
         $subjects = MataKuliah::all();
+        dd($subjects); // Debug
         Log::info('MataKuliahController::index - Subjects count: ' . $subjects->count());
         return view('dashboard', compact('subjects'));
     }
@@ -31,24 +32,25 @@ class MataKuliahController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'nama_mata_kuliah' => 'required|string|max:255',
-            'ikon' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Maksimal 2MB
-            'color' => 'nullable|string|max:255',
-        ]);
+   public function store(Request $request)
+{
+    $validated = $request->validate([
+        'nama_mata_kuliah' => 'required|string|max:255|unique:mata_kuliah,nama_mata_kuliah',
+        'ikon' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        'color' => 'nullable|string|max:255',
+    ], [
+        'nama_mata_kuliah.unique' => 'Nama mata kuliah sudah ada.',
+    ]);
 
-        if ($request->hasFile('ikon')) {
-            $path = $request->file('ikon')->store('icons', 'public');
-            $validated['ikon'] = $path;
-        }
-
-        MataKuliah::create($validated);
-
-        return redirect()->route('dashboard')->with('success', 'Mata kuliah berhasil ditambahkan!');
+    if ($request->hasFile('ikon')) {
+        $path = $request->file('ikon')->store('icons', 'public');
+        $validated['ikon'] = $path;
     }
 
+    MataKuliah::create($validated);
+    $subjects = MataKuliah::all();
+    return view('dashboard', compact('subjects'))->with('success', 'Mata kuliah berhasil ditambahkan!');
+}
     /**
      * Display the specified resource.
      */
@@ -68,41 +70,37 @@ class MataKuliahController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, MataKuliah $mataKuliah)
-    {
-        $validated = $request->validate([
-            'nama_mata_kuliah' => 'required|string|max:255',
-            'ikon' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'color' => 'nullable|string|max:255',
-        ]);
+   public function update(Request $request, MataKuliah $mataKuliah)
+{
+    $validated = $request->validate([
+        'nama_mata_kuliah' => 'required|string|max:255|unique:mata_kuliah,nama_mata_kuliah,' . $mataKuliah->id,
+        'ikon' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        'color' => 'nullable|string|max:255',
+    ], [
+        'nama_mata_kuliah.unique' => 'Nama mata kuliah sudah ada.',
+    ]);
 
-        if ($request->hasFile('ikon')) {
-            // Hapus ikon lama jika ada
-            if ($mataKuliah->ikon) {
-                Storage::disk('public')->delete($mataKuliah->ikon);
-            }
-            $path = $request->file('ikon')->store('icons', 'public');
-            $validated['ikon'] = $path;
-        }
-
-        $mataKuliah->update($validated);
-
-        return redirect()->route('dashboard')->with('success', 'Mata kuliah berhasil diperbarui!');
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(MataKuliah $mataKuliah)
-    {
-        // Hapus soal terkait
-        $mataKuliah->soal()->delete();
-        // Hapus ikon jika ada
+    if ($request->hasFile('ikon')) {
         if ($mataKuliah->ikon) {
             Storage::disk('public')->delete($mataKuliah->ikon);
         }
-        $mataKuliah->delete();
-
-        return redirect()->route('dashboard')->with('success', 'Mata kuliah berhasil dihapus!');
+        $path = $request->file('ikon')->store('icons', 'public');
+        $validated['ikon'] = $path;
     }
+
+    $mataKuliah->update($validated);
+    $subjects = MataKuliah::all();
+    return view('dashboard', compact('subjects'))->with('success', 'Mata kuliah berhasil diperbarui!');
+}
+
+public function destroy(MataKuliah $mataKuliah)
+{
+    $mataKuliah->soal()->delete();
+    if ($mataKuliah->ikon) {
+        Storage::disk('public')->delete($mataKuliah->ikon);
+    }
+    $mataKuliah->delete();
+    $subjects = MataKuliah::all();
+    return view('dashboard', compact('subjects'))->with('success', 'Mata kuliah berhasil dihapus!');
+}
 }
