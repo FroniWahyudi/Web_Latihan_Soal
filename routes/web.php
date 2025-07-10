@@ -1,22 +1,24 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SoalController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MataKuliahController;
 use App\Http\Controllers\KuisController;
-use Illuminate\Support\Facades\Route;
 
+// Halaman utama redirect ke login
 Route::get('/', [LoginController::class, 'showLoginForm'])->name('home');
 
-// Route autentikasi
+// Route autentikasi (tanpa middleware)
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-// Route yang dilindungi oleh middleware auth dan verified
-Route::middleware(['auth', 'verified'])->group(function () {
+// Route yang membutuhkan autentikasi
+Route::middleware(['auth'])->group(function () {
+
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -28,8 +30,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Soal
     Route::resource('soal', SoalController::class)->only(['index', 'create', 'store']);
     Route::get('/soal/{soal}/edit', [SoalController::class, 'edit'])->name('soal.edit');
-    Route::get('/soal/create', [SoalController::class, 'create'])->name('soal.create');
-Route::post('/soal', [SoalController::class, 'store'])->name('soal.store');
 
     // Mata Kuliah
     Route::resource('mata-kuliah', MataKuliahController::class)->except(['destroy']);
