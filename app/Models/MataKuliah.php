@@ -10,8 +10,7 @@ class MataKuliah extends Model
     use HasFactory;
 
     protected $table = 'mata_kuliah';
-
-    protected $fillable = ['nama_mata_kuliah', 'ikon'];
+    protected $fillable = ['nama_mata_kuliah', 'ikon', 'color'];
 
     public function soal()
     {

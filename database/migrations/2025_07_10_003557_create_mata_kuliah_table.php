@@ -4,26 +4,21 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class CreateMataKuliahTable extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    public function up()
     {
-      Schema::create('mata_kuliah', function (Blueprint $table) {
-    $table->id();
-    $table->string('nama_mata_kuliah');
-    $table->string('ikon')->nullable();
-    $table->timestamps();
-});
+        Schema::create('mata_kuliah', function (Blueprint $table) {
+            $table->id();
+            $table->string('nama_mata_kuliah');
+            $table->string('ikon')->nullable(); // Kolom ikon opsional
+            $table->string('color')->nullable(); // Kolom color opsional
+            $table->timestamps();
+        });
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('mata_kuliah');
     }
-};
+}

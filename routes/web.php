@@ -1,30 +1,33 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SoalController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MataKuliahController;
 use Illuminate\Support\Facades\Route;
-use App\Models\MataKuliah;
+use Illuminate\Support\Facades\Auth;
 
-Route::get('/', function () {
-    return view('dashboard'); // dashboard.blade.php
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/logout', function () {
+    Auth::logout();
+    return redirect('/login');
+})->name('logout');
+    // Dashboard
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-// Authenticated routes
-Route::middleware(['auth'])->group(function () {
     // Profil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Contoh route tambahan (jika ada halaman buat/edit soal)
-    Route::view('/buat-soal', 'buat_soal')->name('soal.buat');
-    Route::view('/edit-soal', 'edit_soal')->name('soal.edit');
+    // Soal
+    Route::get('/soal', [SoalController::class, 'index'])->name('soal.index');
+    Route::get('/soal/create', [SoalController::class, 'create'])->name('soal.create');
+    Route::post('/soal', [SoalController::class, 'store'])->name('soal.store');
+    Route::get('/edit-soal/{id}', [SoalController::class, 'edit'])->name('soal.edit');
+
+    // Mata Kuliah
+    Route::delete('/mata-kuliah/{id}', [MataKuliahController::class, 'destroy'])->name('mata_kuliah.delete');
+    // Tambahkan juga route lainnya jika diperlukan
+    Route::get('/mata-kuliah', [MataKuliahController::class, 'index'])->name('mata_kuliah.index');
 });
-
-// Include auth (login, register, etc.)
-require __DIR__.'/auth.php';
-
-
-Route::get('/', function () {
-    $subjects = MataKuliah::all(); // ambil semua data mata kuliah
-    return view('dashboard', compact('subjects'));
-})->middleware(['auth', 'verified'])->name('dashboard');
