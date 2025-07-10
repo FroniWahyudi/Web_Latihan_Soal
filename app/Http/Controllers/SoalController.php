@@ -77,14 +77,33 @@ class SoalController extends Controller
                     return redirect()->back()->with('error', 'Setiap soal harus memiliki satu jawaban benar dengan tanda (correct).');
                 }
 
+                // Shuffle options
+                $options = $q['options'];
+                $correctIndex = $q['correct']; // Original correct answer index
+                $optionKeys = [0, 1, 2, 3]; // Indices for A, B, C, D
+                shuffle($optionKeys); // Randomize the order of indices
+
+                // Reorder options based on shuffled indices
+                $shuffledOptions = [
+                    $options[$optionKeys[0]], // New option A
+                    $options[$optionKeys[1]], // New option B
+                    $options[$optionKeys[2]], // New option C
+                    $options[$optionKeys[3]], // New option D
+                ];
+
+                // Determine new correct answer index after shuffling
+                $newCorrectIndex = array_search($correctIndex, $optionKeys);
+                $newCorrectLetter = chr(65 + $newCorrectIndex); // Convert to A, B, C, or D
+
+                // Save to database
                 Soal::create([
                     'mata_kuliah_id' => $mataKuliahId,
                     'pertanyaan' => $q['question'],
-                    'pilihan_a' => $q['options'][0],
-                    'pilihan_b' => $q['options'][1],
-                    'pilihan_c' => $q['options'][2],
-                    'pilihan_d' => $q['options'][3],
-                    'jawaban_benar' => chr(65 + $q['correct']), // Konversi 0->A, 1->B, dst.
+                    'pilihan_a' => $shuffledOptions[0],
+                    'pilihan_b' => $shuffledOptions[1],
+                    'pilihan_c' => $shuffledOptions[2],
+                    'pilihan_d' => $shuffledOptions[3],
+                    'jawaban_benar' => $newCorrectLetter,
                 ]);
             }
 
