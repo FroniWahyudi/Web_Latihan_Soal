@@ -4,9 +4,9 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateSoalTable extends Migration
+return new class extends Migration
 {
-    public function up()
+    public function up(): void
     {
         Schema::create('soal', function (Blueprint $table) {
             $table->id();
@@ -16,13 +16,13 @@ class CreateSoalTable extends Migration
             $table->string('pilihan_b');
             $table->string('pilihan_c');
             $table->string('pilihan_d');
-            $table->integer('jawaban_benar');
+            $table->string('jawaban_benar', 1);
             $table->timestamps();
         });
     }
 
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('soal');
     }
-}
+};

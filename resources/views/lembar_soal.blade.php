@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Kuis {{ $kuis->mataKuliah->nama_mata_kuliah }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -138,47 +142,38 @@
                 <span class="text-sm font-semibold text-blue-600">Soal {{ $index + 1 }} dari {{ $totalSoal }}</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-3">
-                <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full progress-bar" style="width: {{ $totalSoal > 0 ? number_format((($index + 1) / $totalSoal) * 100, 2) : 0 }}%"></div>
+                <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full progress-bar"></div>
             </div>
         </div>
 
         <!-- Question Card -->
-        <form id="quizForm" action="{{ route('kuis.simpanJawaban', ['kuisId' => $kuis->id, 'index' => $index]) }}" method="POST">
-            @csrf
-            <input type="hidden" name="jawaban" id="selectedAnswer">
-            <div class="bg-white rounded-2xl shadow-sm p-8 mb-8 fade-in border border-gray-100">
-                <div class="text-center mb-8">
-                    <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
-                        <span class="text-blue-600 font-bold text-lg">{{ $index + 1 }}</span>
-                    </div>
-                    <h2 class="text-2xl font-semibold text-gray-800 leading-relaxed">{!! $soal->pertanyaan !!}</h2>
+        <div class="bg-white rounded-2xl shadow-sm p-8 mb-8 fade-in border border-gray-100">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+                    <span class="text-blue-600 font-bold text-lg">{{ $index + 1 }}</span>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="optionsContainer">
-                    @foreach (['A' => $soal->pilihan_a, 'B' => $soal->pilihan_b, 'C' => $soal->pilihan_c, 'D' => $soal->pilihan_d] as $key => $pilihan)
-                        <label class="option-button bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 rounded-xl p-6 text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" data-value="{{ $key }}">
-                            <input type="radio" name="jawaban_radio" value="{{ $key }}" class="hidden" {{ isset($jawaban[$soal->id]) && $jawaban[$soal->id] == $key ? 'checked' : '' }} required>
-                            <div class="flex items-center">
-                                <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold mr-4">{{ $key }}</span>
-                                <span class="text-lg font-medium text-gray-700">{!! $pilihan !!}</span>
-                            </div>
-                        </label>
-                    @endforeach
-                </div>
+                <h2 class="text-2xl font-semibold text-gray-800 leading-relaxed">{{ $soal->pertanyaan }}</h2>
             </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="optionsContainer">
+                @foreach (['A' => $soal->pilihan_a, 'B' => $soal->pilihan_b, 'C' => $soal->pilihan_c, 'D' => $soal->pilihan_d] as $key => $pilihan)
+                    <label class="option-button bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 rounded-xl p-6 text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" data-value="{{ $key }}">
+                        <input type="radio" name="jawaban_radio" value="{{ $key }}" class="hidden" {{ isset($jawaban[$soal->id]) && $jawaban[$soal->id] == $key ? 'checked' : '' }} required>
+                        <div class="flex items-center">
+                            <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold mr-4">{{ $key }}</span>
+                            <span class="text-lg font-medium text-gray-700">{{ $pilihan }}</span>
+                        </div>
+                    </label>
+                @endforeach
+            </div>
+        </div>
 
-            <div class="flex justify-between mt-8">
-                @if ($index > 0)
-                    <a href="{{ route('kuis.soal', ['kuisId' => $kuis->id, 'index' => $index - 1]) }}" class="bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl">Sebelumnya</a>
-                @else
-                    <button type="button" class="bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl" disabled>Sebelumnya</button>
-                @endif
-                @if ($index < $totalSoal - 1)
-                    <button type="submit" id="nextButton" class="bg-blue-500 text-white font-semibold py-3 px-6 rounded-xl hidden">Selanjutnya</button>
-                @else
-                    <button type="submit" id="submitButton" class="bg-green-500 text-white font-semibold py-3 px-6 rounded-xl hidden">Submit</button>
-                @endif
-            </div>
-        </form>
+        <div class="flex justify-between mt-8">
+            @if ($index > 0)
+                <a href="{{ route('kuis.soal', ['kuisId' => $kuis->id, 'index' => $index - 1]) }}" class="bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl">Sebelumnya</a>
+            @else
+                <button type="button" class="bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl" disabled>Sebelumnya</button>
+            @endif
+        </div>
     </main>
 
     <!-- Notification (Hidden initially) -->
@@ -199,66 +194,83 @@
             menu.classList.toggle('hidden');
         }
 
-        document.querySelectorAll('.option-button').forEach(button => {
-            button.addEventListener('click', function() {
+        document.querySelectorAll('input[name="jawaban_radio"]').forEach(input => {
+            input.addEventListener('change', function() {
                 if (isAnswering) return;
                 isAnswering = true;
 
-                // Set selected answer
-                const selectedValue = this.getAttribute('data-value');
-                document.getElementById('selectedAnswer').value = selectedValue;
+                const selectedValue = this.value;
 
-                // Disable all options
                 document.querySelectorAll('.option-button').forEach(opt => {
                     opt.classList.add('pointer-events-none');
                 });
 
-                // Send AJAX request
                 fetch("{{ route('kuis.simpanJawaban', ['kuisId' => $kuis->id, 'index' => $index]) }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': "{{ csrf_token() }}"
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
                     body: JSON.stringify({
                         jawaban: selectedValue
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.error || `HTTP error! Status: ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Response data:', data); // Debugging
+                    if (data.error) {
+                        showNotification(data.error);
+                        isAnswering = false;
+                        document.querySelectorAll('.option-button').forEach(opt => {
+                            opt.classList.remove('pointer-events-none');
+                        });
+                        return;
+                    }
+
                     const options = document.querySelectorAll('.option-button');
-                    const correctAnswer = data.correct_answer; // Assume server returns correct answer
+                    const correctAnswer = data.correct_answer;
 
                     options.forEach(option => {
                         const value = option.getAttribute('data-value');
                         const letterSpan = option.querySelector('span:first-child');
                         if (value === selectedValue) {
                             if (value === correctAnswer) {
-                                // Correct answer
                                 option.classList.add('bg-green-500', 'text-white', 'border-green-500', 'pulse-green');
                                 letterSpan.className = 'w-8 h-8 bg-white text-green-600 rounded-full flex items-center justify-center font-semibold mr-4';
                             } else {
-                                // Wrong answer
                                 option.classList.add('bg-red-500', 'text-white', 'border-red-500', 'pulse-red', 'shake');
                                 letterSpan.className = 'w-8 h-8 bg-white text-red-600 rounded-full flex items-center justify-center font-semibold mr-4';
-                                showNotification();
+                                showNotification('Jawaban Salah!');
                             }
                         } else if (value === correctAnswer) {
-                            // Highlight correct answer
                             option.classList.add('bg-green-500', 'text-white', 'border-green-500', 'pulse-green');
                             letterSpan.className = 'w-8 h-8 bg-white text-green-600 rounded-full flex items-center justify-center font-semibold mr-4';
                         }
                     });
 
-                    // Navigate to next question or submit
                     setTimeout(() => {
                         if (data.next_url) {
-                            window.location.href = data.next_url; // Redirect to next question or submit
+                            console.log('Redirecting to:', data.next_url); // Debugging
+                            window.location.href = data.next_url; // Arahkan ke soal berikutnya atau hasil
+                        } else {
+                            showNotification('Terjadi kesalahan, silakan coba lagi.');
+                            isAnswering = false;
+                            document.querySelectorAll('.option-button').forEach(opt => {
+                                opt.classList.remove('pointer-events-none');
+                            });
                         }
                     }, data.is_correct ? 1500 : 2500);
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+                    console.error('Fetch error:', error.message);
+                    showNotification('Gagal menghubungi server: ' + error.message);
                     isAnswering = false;
                     document.querySelectorAll('.option-button').forEach(opt => {
                         opt.classList.remove('pointer-events-none');
@@ -267,13 +279,23 @@
             });
         });
 
-        function showNotification() {
+        function showNotification(message) {
             const notification = document.getElementById('notification');
-            notification.classList.remove('hidden');
-            setTimeout(() => {
-                notification.classList.add('hidden');
-            }, 2000);
+            if (notification) {
+                notification.querySelector('span').textContent = message;
+                notification.classList.remove('hidden');
+                setTimeout(() => {
+                    notification.classList.add('hidden');
+                }, 2000);
+            }
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const progressBar = document.getElementById('progressBar');
+            if (progressBar) {
+                progressBar.style.width = '{{ $totalSoal > 0 ? (($index + 1) / $totalSoal) * 100 : 0 }}%';
+            }
+        });
     </script>
 </body>
 </html>

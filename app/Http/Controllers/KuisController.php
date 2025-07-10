@@ -8,6 +8,7 @@ use App\Models\Kuis;
 use App\Models\KuisJawaban;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Log;
 
 class KuisController extends Controller
 {
@@ -53,55 +54,49 @@ class KuisController extends Controller
 
         return view('lembar_soal', compact('kuis', 'soal', 'index', 'totalSoal', 'jawaban'));
     }
-
-    public function simpanJawaban(Request $request, $kuisId, $index)
-    {
+public function simpanJawaban(Request $request, $kuisId, $index)
+{
+    try {
         $request->validate([
             'jawaban' => 'required|in:A,B,C,D',
         ]);
 
         $soalIds = Session::get("kuis_{$kuisId}_soal", []);
         if ($index < 0 || $index >= count($soalIds)) {
-            return redirect()->route('kuis.index')->with('error', 'Soal tidak valid.');
+            return response()->json(['error' => 'Soal tidak valid.'], 400);
         }
 
-        // Simpan jawaban ke sesi
-        $jawaban = Session::get("kuis_{$kuisId}_jawaban", []);
-        $jawaban[$soalIds[$index]] = $request->jawaban;
-        Session::put("kuis_{$kuisId}_jawaban", $jawaban);
+        $soal = Soal::findOrFail($soalIds[$index]);
+        $isCorrect = $request->jawaban === $soal->jawaban_benar;
+
+        KuisJawaban::updateOrCreate(
+            ['kuis_id' => $kuisId, 'soal_id' => $soal->id],
+            ['jawaban_user' => $request->jawaban, 'benar_salah' => $isCorrect]
+        );
 
         $nextIndex = $index + 1;
-        if ($nextIndex >= count($soalIds)) {
-            return redirect()->route('kuis.submit', $kuisId);
-        }
+        $nextUrl = $nextIndex < count($soalIds)
+            ? route('kuis.soal', ['kuisId' => $kuisId, 'index' => $nextIndex])
+            : route('kuis.hasil', $kuisId); // Pastikan menggunakan kuis.hasil
+        Log::info('Next URL generated: ' . $nextUrl);
 
-        return redirect()->route('kuis.soal', ['kuisId' => $kuisId, 'index' => $nextIndex]);
+        return response()->json([
+            'is_correct' => $isCorrect,
+            'correct_answer' => $soal->jawaban_benar,
+            'next_url' => $nextUrl,
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Simpan jawaban gagal', ['kuisId' => $kuisId, 'index' => $index, 'error' => $e->getMessage()]);
+        return response()->json(['error' => 'Gagal menyimpan jawaban: ' . $e->getMessage()], 500);
     }
+}
 
-    public function submit($kuisId)
-    {
+ public function submit($kuisId)
+{
+    try {
         $kuis = Kuis::findOrFail($kuisId);
-        $jawaban = Session::get("kuis_{$kuisId}_jawaban", []);
-        $soalIds = Session::get("kuis_{$kuisId}_soal", []);
-        $skor = 0;
-
-        foreach ($soalIds as $soalId) {
-            if (!isset($jawaban[$soalId])) {
-                continue; // Lewati jika belum dijawab
-            }
-
-            $soal = Soal::find($soalId);
-            $benar = $soal->jawaban_benar === $jawaban[$soalId];
-
-            if ($benar) $skor++;
-
-            KuisJawaban::create([
-                'kuis_id' => $kuis->id,
-                'soal_id' => $soalId,
-                'jawaban_user' => $jawaban[$soalId],
-                'benar_salah' => $benar,
-            ]);
-        }
+        $jawabanKuis = KuisJawaban::where('kuis_id', $kuisId)->get();
+        $skor = $jawabanKuis->where('benar_salah', true)->count();
 
         $kuis->update([
             'tanggal_selesai' => now(),
@@ -112,12 +107,23 @@ class KuisController extends Controller
         Session::forget("kuis_{$kuisId}_soal");
         Session::forget("kuis_{$kuisId}_jawaban");
 
-        return redirect()->route('kuis.hasil', $kuis->id);
+        return response()->json([
+            'redirect_url' => route('kuis.hasil', $kuisId),
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Submit kuis gagal', [
+            'kuisId' => $kuisId,
+            'error' => $e->getMessage(),
+        ]);
+        return response()->json([
+            'error' => 'Gagal menyelesaikan kuis: ' . $e->getMessage(),
+        ], 500);
     }
-
-    public function hasil($kuisId)
-    {
-        $kuis = Kuis::with('jawaban.soal')->findOrFail($kuisId);
-        return view('kuis.hasil', compact('kuis'));
-    }
+}
+   public function hasil($kuisId)
+{
+    $kuis = Kuis::with('jawaban.soal')->findOrFail($kuisId);
+    $mataKuliah = MataKuliah::all(); // Ambil semua mata kuliah
+    return view('hasil', compact('kuis', 'mataKuliah'));
+}
 }

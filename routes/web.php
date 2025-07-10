@@ -28,6 +28,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Soal
     Route::resource('soal', SoalController::class)->only(['index', 'create', 'store']);
     Route::get('/soal/{soal}/edit', [SoalController::class, 'edit'])->name('soal.edit');
+    Route::get('/soal/create', [SoalController::class, 'create'])->name('soal.create');
+Route::post('/soal', [SoalController::class, 'store'])->name('soal.store');
 
     // Mata Kuliah
     Route::resource('mata-kuliah', MataKuliahController::class)->except(['destroy']);
@@ -38,6 +40,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/kuis/{mataKuliahId}/mulai', [KuisController::class, 'mulai'])->name('kuis.mulai');
     Route::get('/kuis/{kuisId}/soal/{index}', [KuisController::class, 'soal'])->name('kuis.soal');
     Route::post('/kuis/{kuisId}/soal/{index}', [KuisController::class, 'simpanJawaban'])->name('kuis.simpanJawaban');
-    Route::post('/kuis/{kuisId}/submit', [KuisController::class, 'submit'])->name('kuis.submit');
     Route::get('/kuis/{kuisId}/hasil', [KuisController::class, 'hasil'])->name('kuis.hasil');
 });
