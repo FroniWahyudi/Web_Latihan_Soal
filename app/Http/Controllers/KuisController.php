@@ -30,11 +30,15 @@ class KuisController extends Controller
             'user_id' => auth()->id(),
             'mata_kuliah_id' => $mataKuliahId,
             'tanggal_mulai' => now(),
+            'skor' => 0,
         ]);
 
-        // Simpan daftar soal ke sesi untuk urutan konsisten
-        Session::put("kuis_{$kuis->id}_soal", $soal->pluck('id')->toArray());
+        // Simpan daftar soal ke sesi
+        $soalIds = $soal->pluck('id')->toArray();
+        Session::put("kuis_{$kuis->id}_soal", $soalIds);
         Session::put("kuis_{$kuis->id}_jawaban", []);
+
+        Log::info('Kuis dimulai', ['kuis_id' => $kuis->id, 'mata_kuliah_id' => $mataKuliahId, 'soal_count' => count($soalIds)]);
 
         return redirect()->route('kuis.soal', ['kuisId' => $kuis->id, 'index' => 0]);
     }
@@ -45,85 +49,121 @@ class KuisController extends Controller
         $soalIds = Session::get("kuis_{$kuisId}_soal", []);
         
         if (empty($soalIds) || $index < 0 || $index >= count($soalIds)) {
-            return redirect()->route('kuis.index')->with('error', 'Soal tidak valid.');
+            Log::warning('Soal tidak valid', ['kuis_id' => $kuisId, 'index' => $index]);
+            return redirect()->route('kuis.hasil', $kuisId)->with('error', 'Soal tidak valid atau kuis telah selesai.');
         }
 
         $soal = Soal::findOrFail($soalIds[$index]);
         $totalSoal = count($soalIds);
-        $jawaban = Session::get("kuis_{$kuisId}_jawaban", []);
+        $jawaban = KuisJawaban::where('kuis_id', $kuisId)->get()->keyBy('soal_id')->toArray();
 
         return view('lembar_soal', compact('kuis', 'soal', 'index', 'totalSoal', 'jawaban'));
     }
-public function simpanJawaban(Request $request, $kuisId, $index)
-{
-    try {
-        $request->validate([
-            'jawaban' => 'required|in:A,B,C,D',
-        ]);
 
-        $soalIds = Session::get("kuis_{$kuisId}_soal", []);
-        if ($index < 0 || $index >= count($soalIds)) {
-            return response()->json(['error' => 'Soal tidak valid.'], 400);
+    public function simpanJawaban(Request $request, $kuisId, $index)
+    {
+        try {
+            $request->validate([
+                'jawaban' => 'required|in:A,B,C,D',
+            ]);
+
+            $kuis = Kuis::findOrFail($kuisId);
+            $soalIds = Session::get("kuis_{$kuisId}_soal", []);
+            if ($index < 0 || $index >= count($soalIds)) {
+                Log::warning('Index soal tidak valid', ['kuis_id' => $kuisId, 'index' => $index]);
+                return response()->json(['error' => 'Soal tidak valid.'], 400);
+            }
+
+            $soal = Soal::findOrFail($soalIds[$index]);
+            $isCorrect = $request->jawaban === $soal->jawaban_benar;
+
+            // Simpan jawaban
+            $jawaban = KuisJawaban::updateOrCreate(
+                ['kuis_id' => $kuisId, 'soal_id' => $soal->id],
+                ['jawaban_user' => $request->jawaban, 'benar_salah' => $isCorrect]
+            );
+
+            // Perbarui sesi jawaban
+            $jawabanSesi = Session::get("kuis_{$kuisId}_jawaban", []);
+            $jawabanSesi[$soal->id] = [
+                'jawaban_user' => $request->jawaban,
+                'benar_salah' => $isCorrect,
+            ];
+            Session::put("kuis_{$kuisId}_jawaban", $jawabanSesi);
+
+            // Perbarui skor secara langsung
+            $skor = KuisJawaban::where('kuis_id', $kuisId)->where('benar_salah', true)->count();
+            $kuis->update(['skor' => $skor]);
+
+            $nextIndex = $index + 1;
+            $nextUrl = $nextIndex < count($soalIds)
+                ? route('kuis.soal', ['kuisId' => $kuisId, 'index' => $nextIndex])
+                : route('kuis.hasil', $kuisId);
+
+            Log::info('Jawaban disimpan', [
+                'kuis_id' => $kuisId,
+                'soal_id' => $soal->id,
+                'jawaban_user' => $request->jawaban,
+                'benar_salah' => $isCorrect,
+                'skor' => $skor,
+                'next_url' => $nextUrl,
+            ]);
+
+            return response()->json([
+                'is_correct' => $isCorrect,
+                'correct_answer' => $soal->jawaban_benar,
+                'next_url' => $nextUrl,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Simpan jawaban gagal', ['kuis_id' => $kuisId, 'index' => $index, 'error' => $e->getMessage()]);
+            return response()->json(['error' => 'Gagal menyimpan jawaban: ' . $e->getMessage()], 500);
         }
-
-        $soal = Soal::findOrFail($soalIds[$index]);
-        $isCorrect = $request->jawaban === $soal->jawaban_benar;
-
-        KuisJawaban::updateOrCreate(
-            ['kuis_id' => $kuisId, 'soal_id' => $soal->id],
-            ['jawaban_user' => $request->jawaban, 'benar_salah' => $isCorrect]
-        );
-
-        $nextIndex = $index + 1;
-        $nextUrl = $nextIndex < count($soalIds)
-            ? route('kuis.soal', ['kuisId' => $kuisId, 'index' => $nextIndex])
-            : route('kuis.hasil', $kuisId); // Pastikan menggunakan kuis.hasil
-        Log::info('Next URL generated: ' . $nextUrl);
-
-        return response()->json([
-            'is_correct' => $isCorrect,
-            'correct_answer' => $soal->jawaban_benar,
-            'next_url' => $nextUrl,
-        ]);
-    } catch (\Exception $e) {
-        Log::error('Simpan jawaban gagal', ['kuisId' => $kuisId, 'index' => $index, 'error' => $e->getMessage()]);
-        return response()->json(['error' => 'Gagal menyimpan jawaban: ' . $e->getMessage()], 500);
     }
-}
 
- public function submit($kuisId)
-{
-    try {
-        $kuis = Kuis::findOrFail($kuisId);
-        $jawabanKuis = KuisJawaban::where('kuis_id', $kuisId)->get();
-        $skor = $jawabanKuis->where('benar_salah', true)->count();
+    public function submit($kuisId)
+    {
+        try {
+            $kuis = Kuis::findOrFail($kuisId);
+            $jawabanKuis = KuisJawaban::where('kuis_id', $kuisId)->get();
+            $totalSoal = Session::get("kuis_{$kuisId}_soal", [])->count();
 
-        $kuis->update([
-            'tanggal_selesai' => now(),
-            'skor' => $skor,
-        ]);
+            if ($jawabanKuis->count() < $totalSoal) {
+                Log::warning('Kuis belum selesai', ['kuis_id' => $kuisId, 'jawaban_count' => $jawabanKuis->count(), 'total_soal' => $totalSoal]);
+                return response()->json(['error' => 'Harap jawab semua soal sebelum menyelesaikan kuis.'], 400);
+            }
 
-        // Bersihkan sesi
-        Session::forget("kuis_{$kuisId}_soal");
-        Session::forget("kuis_{$kuisId}_jawaban");
+            $skor = $jawabanKuis->where('benar_salah', true)->count();
+            $kuis->update([
+                'tanggal_selesai' => now(),
+                'skor' => $skor,
+            ]);
 
-        return response()->json([
-            'redirect_url' => route('kuis.hasil', $kuisId),
-        ]);
-    } catch (\Exception $e) {
-        Log::error('Submit kuis gagal', [
-            'kuisId' => $kuisId,
-            'error' => $e->getMessage(),
-        ]);
-        return response()->json([
-            'error' => 'Gagal menyelesaikan kuis: ' . $e->getMessage(),
-        ], 500);
+            // Bersihkan sesi
+            Session::forget("kuis_{$kuisId}_soal");
+            Session::forget("kuis_{$kuisId}_jawaban");
+
+            Log::info('Kuis selesai', ['kuis_id' => $kuisId, 'skor' => $skor, 'jawaban_count' => $jawabanKuis->count()]);
+
+            return response()->json([
+                'redirect_url' => route('kuis.hasil', $kuisId),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Submit kuis gagal', ['kuis_id' => $kuisId, 'error' => $e->getMessage()]);
+            return response()->json(['error' => 'Gagal menyelesaikan kuis: ' . $e->getMessage()], 500);
+        }
     }
-}
-   public function hasil($kuisId)
-{
-    $kuis = Kuis::with('jawaban.soal')->findOrFail($kuisId);
-    $mataKuliah = MataKuliah::all(); // Ambil semua mata kuliah
-    return view('hasil', compact('kuis', 'mataKuliah'));
-}
+
+    public function hasil($kuisId)
+    {
+        $kuis = Kuis::with(['jawaban.soal', 'mataKuliah'])->findOrFail($kuisId);
+        $mataKuliah = MataKuliah::all();
+
+        Log::info('Menampilkan hasil kuis', [
+            'kuis_id' => $kuisId,
+            'skor' => $kuis->skor,
+            'jawaban_count' => $kuis->jawaban->count(),
+        ]);
+
+        return view('hasil', compact('kuis', 'mataKuliah'));
+    }
 }

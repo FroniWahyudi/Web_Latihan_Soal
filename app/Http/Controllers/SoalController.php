@@ -12,7 +12,7 @@ class SoalController extends Controller
     public function create()
     {
         $mataKuliah = MataKuliah::all();
-        return view('soal.buat_soal', compact('mataKuliah'));
+        return view('buat_soal', compact('mataKuliah'));
     }
 
     public function store(Request $request)
